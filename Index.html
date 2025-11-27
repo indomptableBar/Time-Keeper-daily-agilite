@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Time Keeper - DevOps Expert</title>
+    <style>
+        /* Styles CSS pour l'interface */
+        :root {
+            --main-bg: #282c34;
+            --card-bg: #3c4048;
+            --text-color: #61dafb;
+            --progress-color: #4CAF50;
+            --danger-color: #f44336;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--main-bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--text-color);
+            margin-bottom: 30px;
+        }
+
+        #main-timer-display {
+            font-size: 4em;
+            font-weight: bold;
+            color: var(--progress-color);
+            margin-bottom: 20px;
+        }
+
+        #start-button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: var(--progress-color);
+            color: black;
+            border: none;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            transition: background-color 0.3s;
+        }
+
+        #start-button:hover {
+            background-color: #45a049;
+        }
+        
+        #start-button:disabled {
+            background-color: #888;
+            cursor: not-allowed;
+        }
+
+        /* Liste des utilisateurs */
+        #user-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 50px;
+        }
+
+        .user-card {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border 0.2s, transform 0.2s;
+        }
+
+        .user-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--text-color);
+        }
+
+        .user-card.active {
+            border-color: var(--progress-color);
+            box-shadow: 0 0 15px var(--progress-color);
+        }
+
+        .user-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .user-time {
+            font-size: 1.5em;
+            color: var(--text-color);
+        }
+
+        /* Barre de progression globale */
+        #progress-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background-color: #333;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: var(--progress-color);
+            transition: width 1s linear; /* Transition douce pour la barre */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Daily Scrum Time Keeper ⏱️</h1>
+
+    <div id="main-timer-display">15:00</div>
+
+    <button id="start-button">Débuter le Daily</button>
+
+    <div id="user-list">
+        </div>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <script>
+        // Logique JavaScript
+        const TOTAL_DAILY_TIME_SECONDS = 15 * 60; // 15 minutes
+        const userNames = [
+            "Kevin", "tati", "Titi", "Steve", "Alpha",
+            "Geohot", "Malfoy", "Tomy", "Toad", "Balade"
+        ];
+
+        const state = {
+            isRunning: false,
+            mainTimeElapsed: 0,
+            mainTimerInterval: null,
+            userTimes: {}, // Stocke le temps écoulé pour chaque utilisateur (en secondes)
+            activeUser: null,
+            userTimerInterval: null
+        };
+
+        const elements = {
+            mainTimerDisplay: document.getElementById('main-timer-display'),
+            startButton: document.getElementById('start-button'),
+            userList: document.getElementById('user-list'),
+            progressBar: document.getElementById('progress-bar')
+        };
+
+        // --- Fonctions utilitaires ---
+
+        /** Formatte les secondes en chaîne MM:SS */
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // --- Rendu des utilisateurs ---
+
+        /** Crée le HTML pour une carte utilisateur */
+        function createUserCard(name) {
+            state.userTimes[name] = 0; // Initialise le temps à 0
+            
+            const card = document.createElement('div');
+            card.className = 'user-card';
+            card.setAttribute('data-name', name);
+            card.onclick = () => handleUserClick(name);
+
+            card.innerHTML = `
+                <div class="user-name">${name}</div>
+                <div class="user-time" id="time-${name.toLowerCase()}">${formatTime(0)}</div>
+            `;
+            elements.userList.appendChild(card);
+        }
+
+        userNames.forEach(createUserCard);
+
+        // --- Logique du Timer Global (15 minutes) ---
+
+        /** Met à jour l'affichage du timer global et la barre de progression */
+        function updateMainTimer() {
+            if (state.mainTimeElapsed >= TOTAL_DAILY_TIME_SECONDS) {
+                // Le Daily est terminé
+                clearInterval(state.mainTimerInterval);
+                stopUserTimer();
+                state.isRunning = false;
+                elements.startButton.disabled = true;
+                elements.startButton.innerText = "Daily Terminé !";
+                elements.mainTimerDisplay.style.color = var(--danger-color);
+                elements.progressBar.style.backgroundColor = var(--danger-color);
+                elements.mainTimerDisplay.innerText = "00:00";
+                return;
+            }
+            
+            state.mainTimeElapsed++;
+
+            const remainingTime = TOTAL_DAILY_TIME_SECONDS - state.mainTimeElapsed;
+            elements.mainTimerDisplay.innerText = formatTime(remainingTime);
+
+            // Mise à jour de la barre de progression
+            const percentage = (state.mainTimeElapsed / TOTAL_DAILY_TIME_SECONDS) * 100;
+            elements.progressBar.style.width = `${percentage}%`;
+            
+            // Changement de couleur pour alerter (ex: si moins de 3 minutes)
+            if (remainingTime <= 3 * 60 && elements.progressBar.style.backgroundColor !== '#FFC107') {
+                 elements.mainTimerDisplay.style.color = '#FFC107'; // Jaune
+                 elements.progressBar.style.backgroundColor = '#FFC107'; // Jaune
+            }
+        }
+
+        /** Démarre le timer global */
+        function startDaily() {
+            if (state.isRunning) return;
+            state.isRunning = true;
+            elements.startButton.disabled = true;
+            elements.startButton.innerText = "Daily En Cours...";
+            
+            // Lance la mise à jour toutes les secondes
+            state.mainTimerInterval = setInterval(updateMainTimer, 1000);
+        }
+
+        elements.startButton.addEventListener('click', startDaily);
+
+        // --- Logique du Timer Utilisateur ---
+
+        /** Démarre ou reprend le timer de l'utilisateur actif */
+        function startUserTimer() {
+            if (state.userTimerInterval) {
+                clearInterval(state.userTimerInterval);
+            }
+            if (!state.activeUser) return;
+
+            // Intervalle de mise à jour du timer utilisateur
+            state.userTimerInterval = setInterval(() => {
+                state.userTimes[state.activeUser]++;
+                // Mise à jour de l'affichage du temps de l'utilisateur
+                const userTimeElement = document.getElementById(`time-${state.activeUser.toLowerCase()}`);
+                if (userTimeElement) {
+                    userTimeElement.innerText = formatTime(state.userTimes[state.activeUser]);
+                }
+            }, 1000);
+        }
+
+        /** Met en pause le timer de l'utilisateur actif */
+        function stopUserTimer() {
+            if (state.userTimerInterval) {
+                clearInterval(state.userTimerInterval);
+                state.userTimerInterval = null;
+            }
+        }
+
+        /** Gère le clic sur une carte utilisateur */
+        function handleUserClick(name) {
+            if (!state.isRunning) return; // Ne rien faire si le Daily n'est pas démarré
+
+            // Désactiver visuellement l'ancien utilisateur
+            if (state.activeUser) {
+                const prevCard = document.querySelector(`.user-card[data-name="${state.activeUser}"]`);
+                if (prevCard) prevCard.classList.remove('active');
+            }
+
+            if (state.activeUser === name) {
+                // Si on clique sur la personne déjà active -> PAUSE
+                stopUserTimer();
+                state.activeUser = null;
+                // La carte reste sans le style 'active'
+            } else {
+                // Si on clique sur une autre personne -> CHANGEMENT
+                stopUserTimer(); // Met en pause le précédent
+                state.activeUser = name; // Définit le nouvel utilisateur actif
+                startUserTimer(); // Démarre le nouveau timer
+
+                // Activer visuellement la nouvelle carte
+                const newCard = document.querySelector(`.user-card[data-name="${state.activeUser}"]`);
+                if (newCard) newCard.classList.add('active');
+            }
+        }
+
+    </script>
+</body>
+</html>
