@@ -1,292 +1,281 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Time Keeper - DevOps Expert</title>
+    <title>Cyberpunk Countdown Interface</title>
     <style>
-        /* Styles CSS pour l'interface */
-        :root {
-            --main-bg: #282c34;
-            --card-bg: #3c4048;
-            --text-color: #61dafb;
-            --progress-color: #4CAF50;
-            --danger-color: #f44336;
-        }
-
+        /* CSS de Base pour le Look Cyberpunk */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--main-bg);
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            overflow: hidden;
+            font-family: 'Consolas', monospace; /* Police technique/futuriste */
+            background-color: #0d0126; /* Fond sombre */
         }
-
-        h1 {
-            color: var(--text-color);
-            margin-bottom: 30px;
+        canvas {
+            display: block;
+            position: fixed; /* Le canvas prend tout l'arrière-plan */
+            top: 0;
+            left: 0;
+            z-index: -1; /* Reste derrière le contenu de l'interface */
         }
-
-        #main-timer-display {
-            font-size: 4em;
-            font-weight: bold;
-            color: var(--progress-color);
-            margin-bottom: 20px;
-        }
-
-        #start-button {
-            padding: 15px 30px;
-            font-size: 1.2em;
-            cursor: pointer;
-            background-color: var(--progress-color);
-            color: black;
-            border: none;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            transition: background-color 0.3s;
-        }
-
-        #start-button:hover {
-            background-color: #45a049;
-        }
-        
-        #start-button:disabled {
-            background-color: #888;
-            cursor: not-allowed;
-        }
-
-        /* Liste des utilisateurs */
-        #user-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 20px;
-            width: 100%;
-            max-width: 900px;
-            margin-bottom: 50px;
-        }
-
-        .user-card {
-            background-color: var(--card-bg);
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: border 0.2s, transform 0.2s;
-        }
-
-        .user-card:hover {
-            transform: translateY(-3px);
-            border-color: var(--text-color);
-        }
-
-        .user-card.active {
-            border-color: var(--progress-color);
-            box-shadow: 0 0 15px var(--progress-color);
-        }
-
-        .user-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-            font-size: 1.1em;
-        }
-
-        .user-time {
-            font-size: 1.5em;
-            color: var(--text-color);
-        }
-
-        /* Barre de progression globale */
-        #progress-container {
-            position: fixed;
-            bottom: 0;
+        #overlay {
+            position: absolute;
+            top: 0;
             left: 0;
             width: 100%;
-            height: 20px;
-            background-color: #333;
-        }
-
-        #progress-bar {
             height: 100%;
-            width: 0%;
-            background-color: var(--progress-color);
-            transition: width 1s linear; /* Transition douce pour la barre */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #00ff99; /* Vert fluo - signature Cyberpunk */
+            text-shadow: 0 0 10px #00ff99, 0 0 20px #00ff99; /* Effet de lueur */
+            box-sizing: border-box;
+            padding: 20px;
+        }
+        #keyword {
+            font-size: 8vw; /* Grand mot clé */
+            font-weight: bold;
+            letter-spacing: 0.8vw;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        #timer {
+            font-size: 4vw;
+            margin-bottom: 40px;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 1.5vw;
+            font-weight: bold;
+            color: #ff00ff; /* Magenta fluo - autre couleur Cyberpunk */
+            background: rgba(128, 0, 128, 0.2); /* Fond semi-transparent */
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 15px #ff00ff, 0 0 30px rgba(255, 0, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        #startButton:hover {
+            color: #0d0126;
+            background: #ff00ff;
+            box-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+        }
+        #startButton:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
         }
     </style>
 </head>
 <body>
 
-    <h1>Daily Scrum Time Keeper ⏱️</h1>
+    <canvas id="glcanvas"></canvas>
 
-    <div id="main-timer-display">15:00</div>
-
-    <button id="start-button">Débuter le Daily</button>
-
-    <div id="user-list">
-        </div>
-
-    <div id="progress-container">
-        <div id="progress-bar"></div>
+    <div id="overlay">
+        <div id="keyword">MyEnterprise</div>
+        <div id="timer">15:00</div>
+        <button id="startButton">Start Sequence</button>
     </div>
 
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        // Le Vertex Shader: définit la géométrie (ici, un simple rectangle qui couvre l'écran)
+        attribute vec4 a_position;
+        void main() {
+            gl_Position = a_position;
+        }
+    </script>
+
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        // Le Fragment Shader (GLSL): définit la couleur de chaque pixel
+        precision highp float;
+
+        // Uniforms (variables passées par JavaScript)
+        uniform vec2 u_resolution; // Taille du canvas
+        uniform float u_time;      // Temps écoulé pour l'animation
+
+        // Fonction pour créer un effet de "grille" qui se déplace
+        float grid(vec2 uv) {
+            vec2 g = abs(fract(uv) - 0.5);
+            float d = g.x + g.y;
+            return 0.05 / d; // Plus la distance est petite, plus la lueur est forte
+        }
+
+        void main() {
+            // Coordonnées du pixel normalisées entre 0.0 et 1.0 (fragCoord / resolution)
+            vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+
+            // Corriger l'aspect ratio
+            uv.x *= u_resolution.x / u_resolution.y;
+
+            // Décalage pour l'effet de mouvement et de déformation
+            vec2 p = uv * 10.0; // Zoomer sur la grille
+            p.y += u_time * 0.1; // Déplacement vertical constant (effet de scrolling)
+            p.x += sin(p.y * 0.5 + u_time * 0.5) * 0.1; // Petite distorsion ondulatoire
+
+            // Calculer la valeur de la grille
+            float g = grid(p);
+
+            // Ajouter une légère distorsion de bruit pour un look dégradé/VHS
+            float noise = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
+            g += noise * 0.05;
+
+            // Définir la couleur (dominante bleue/violette pour le look Cyberpunk)
+            vec3 color = vec3(0.0);
+            color.r = g * 0.1; // Rouge très faible
+            color.g = g * 0.5; // Vert moyen
+            color.b = g * 1.0; // Bleu fort (la couleur principale de la grille)
+
+            // Facteur de lueur basé sur la distance au centre (pour un focus)
+            float dist_center = length(uv - vec2(0.5 * u_resolution.x / u_resolution.y, 0.5));
+            color *= 1.0 + pow(1.0 - dist_center * 1.5, 3.0); // Plus près du centre, plus lumineux
+
+            // Finaliser la couleur du fragment
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
     <script>
-        // Logique JavaScript
-        const TOTAL_DAILY_TIME_SECONDS = 15 * 60; // 15 minutes
-        const userNames = [
-            "Kevin", "tati", "Titi", "Steve", "Alpha",
-            "Geohot", "Malfoy", "Tomy", "Toad", "Balade"
+        // --- Code JavaScript pour WebGL et le Compte à Rebours ---
+
+        // 1. Initialisation WebGL (GLSL Background)
+        const canvas = document.getElementById('glcanvas');
+        const gl = canvas.getContext('webgl');
+        if (!gl) {
+            console.error('WebGL non supporté. Le fond futuriste ne s\'affichera pas.');
+        }
+
+        // Redimensionner le canvas pour qu'il remplisse la fenêtre
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas(); // Appel initial
+
+        // Fonctions utilitaires pour compiler et lier les shaders
+        function createShader(gl, type, sourceId) {
+            const source = document.getElementById(sourceId).text;
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Erreur de compilation du shader:', gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, 'vertex-shader');
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, 'fragment-shader');
+
+        const program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('Erreur de liaison du programme:', gl.getProgramInfoLog(program));
+        }
+
+        gl.useProgram(program);
+
+        // Récupérer les emplacements des uniforms et attributes
+        const positionLocation = gl.getAttribLocation(program, "a_position");
+        const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+        const timeLocation = gl.getUniformLocation(program, "u_time");
+
+        // Créer un buffer pour le rectangle qui couvre l'écran (2 triangles)
+        const positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        const positions = [
+            -1, -1, // Triangle 1
+             1, -1,
+            -1,  1,
+            -1,  1, // Triangle 2
+             1, -1,
+             1,  1,
         ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
-        const state = {
-            isRunning: false,
-            mainTimeElapsed: 0,
-            mainTimerInterval: null,
-            userTimes: {}, // Stocke le temps écoulé pour chaque utilisateur (en secondes)
-            activeUser: null,
-            userTimerInterval: null
-        };
+        // Fonction de rendu (Boucle d'animation)
+        let startTime = Date.now();
+        function drawScene() {
+            const currentTime = (Date.now() - startTime) / 1000; // Temps en secondes
 
-        const elements = {
-            mainTimerDisplay: document.getElementById('main-timer-display'),
-            startButton: document.getElementById('start-button'),
-            userList: document.getElementById('user-list'),
-            progressBar: document.getElementById('progress-bar')
-        };
+            gl.clearColor(0, 0, 0, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
 
-        // --- Fonctions utilitaires ---
+            gl.useProgram(program);
 
-        /** Formatte les secondes en chaîne MM:SS */
+            // Mettre à jour les uniforms
+            gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+            gl.uniform1f(timeLocation, currentTime);
+
+            // Configurer l'attribute a_position
+            gl.enableVertexAttribArray(positionLocation);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+            // Dessiner les 6 sommets (2 triangles)
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+            requestAnimationFrame(drawScene);
+        }
+
+        drawScene(); // Lancer l'animation du fond
+
+        // 2. Logique du Compte à Rebours
+        const startButton = document.getElementById('startButton');
+        const timerDisplay = document.getElementById('timer');
+        const initialDuration = 15 * 60; // 15 minutes en secondes
+        let countdownInterval = null;
+        let remainingTime = initialDuration;
+
         function formatTime(totalSeconds) {
             const minutes = Math.floor(totalSeconds / 60);
             const seconds = totalSeconds % 60;
-            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            // Assurer le format MM:SS
+            const formattedMinutes = String(minutes).padStart(2, '0');
+            const formattedSeconds = String(seconds).padStart(2, '0');
+            return `${formattedMinutes}:${formattedSeconds}`;
         }
 
-        // --- Rendu des utilisateurs ---
-
-        /** Crée le HTML pour une carte utilisateur */
-        function createUserCard(name) {
-            state.userTimes[name] = 0; // Initialise le temps à 0
-            
-            const card = document.createElement('div');
-            card.className = 'user-card';
-            card.setAttribute('data-name', name);
-            card.onclick = () => handleUserClick(name);
-
-            card.innerHTML = `
-                <div class="user-name">${name}</div>
-                <div class="user-time" id="time-${name.toLowerCase()}">${formatTime(0)}</div>
-            `;
-            elements.userList.appendChild(card);
-        }
-
-        userNames.forEach(createUserCard);
-
-        // --- Logique du Timer Global (15 minutes) ---
-
-        /** Met à jour l'affichage du timer global et la barre de progression */
-        function updateMainTimer() {
-            if (state.mainTimeElapsed >= TOTAL_DAILY_TIME_SECONDS) {
-                // Le Daily est terminé
-                clearInterval(state.mainTimerInterval);
-                stopUserTimer();
-                state.isRunning = false;
-                elements.startButton.disabled = true;
-                elements.startButton.innerText = "Daily Terminé !";
-                elements.mainTimerDisplay.style.color = var(--danger-color);
-                elements.progressBar.style.backgroundColor = var(--danger-color);
-                elements.mainTimerDisplay.innerText = "00:00";
+        function updateCountdown() {
+            if (remainingTime <= 0) {
+                clearInterval(countdownInterval);
+                timerDisplay.textContent = "00:00";
+                timerDisplay.style.color = "#ff0000"; // Rouge pour la fin
+                timerDisplay.style.textShadow = "0 0 15px #ff0000";
+                startButton.textContent = "SEQUENCE TERMINÉE";
+                startButton.disabled = true;
                 return;
             }
-            
-            state.mainTimeElapsed++;
 
-            const remainingTime = TOTAL_DAILY_TIME_SECONDS - state.mainTimeElapsed;
-            elements.mainTimerDisplay.innerText = formatTime(remainingTime);
-
-            // Mise à jour de la barre de progression
-            const percentage = (state.mainTimeElapsed / TOTAL_DAILY_TIME_SECONDS) * 100;
-            elements.progressBar.style.width = `${percentage}%`;
-            
-            // Changement de couleur pour alerter (ex: si moins de 3 minutes)
-            if (remainingTime <= 3 * 60 && elements.progressBar.style.backgroundColor !== '#FFC107') {
-                 elements.mainTimerDisplay.style.color = '#FFC107'; // Jaune
-                 elements.progressBar.style.backgroundColor = '#FFC107'; // Jaune
-            }
+            remainingTime--;
+            timerDisplay.textContent = formatTime(remainingTime);
         }
 
-        /** Démarre le timer global */
-        function startDaily() {
-            if (state.isRunning) return;
-            state.isRunning = true;
-            elements.startButton.disabled = true;
-            elements.startButton.innerText = "Daily En Cours...";
-            
-            // Lance la mise à jour toutes les secondes
-            state.mainTimerInterval = setInterval(updateMainTimer, 1000);
-        }
+        startButton.addEventListener('click', () => {
+            if (countdownInterval) return; // Empêcher de démarrer deux fois
 
-        elements.startButton.addEventListener('click', startDaily);
+            startButton.disabled = true;
+            startButton.textContent = "RUNNING...";
+            remainingTime = initialDuration; // Réinitialiser à 15 minutes
+            timerDisplay.style.color = "#00ff99";
+            timerDisplay.style.textShadow = "0 0 10px #00ff99, 0 0 20px #00ff99";
 
-        // --- Logique du Timer Utilisateur ---
+            // Démarrer le compte à rebours
+            countdownInterval = setInterval(updateCountdown, 1000);
+        });
 
-        /** Démarre ou reprend le timer de l'utilisateur actif */
-        function startUserTimer() {
-            if (state.userTimerInterval) {
-                clearInterval(state.userTimerInterval);
-            }
-            if (!state.activeUser) return;
-
-            // Intervalle de mise à jour du timer utilisateur
-            state.userTimerInterval = setInterval(() => {
-                state.userTimes[state.activeUser]++;
-                // Mise à jour de l'affichage du temps de l'utilisateur
-                const userTimeElement = document.getElementById(`time-${state.activeUser.toLowerCase()}`);
-                if (userTimeElement) {
-                    userTimeElement.innerText = formatTime(state.userTimes[state.activeUser]);
-                }
-            }, 1000);
-        }
-
-        /** Met en pause le timer de l'utilisateur actif */
-        function stopUserTimer() {
-            if (state.userTimerInterval) {
-                clearInterval(state.userTimerInterval);
-                state.userTimerInterval = null;
-            }
-        }
-
-        /** Gère le clic sur une carte utilisateur */
-        function handleUserClick(name) {
-            if (!state.isRunning) return; // Ne rien faire si le Daily n'est pas démarré
-
-            // Désactiver visuellement l'ancien utilisateur
-            if (state.activeUser) {
-                const prevCard = document.querySelector(`.user-card[data-name="${state.activeUser}"]`);
-                if (prevCard) prevCard.classList.remove('active');
-            }
-
-            if (state.activeUser === name) {
-                // Si on clique sur la personne déjà active -> PAUSE
-                stopUserTimer();
-                state.activeUser = null;
-                // La carte reste sans le style 'active'
-            } else {
-                // Si on clique sur une autre personne -> CHANGEMENT
-                stopUserTimer(); // Met en pause le précédent
-                state.activeUser = name; // Définit le nouvel utilisateur actif
-                startUserTimer(); // Démarre le nouveau timer
-
-                // Activer visuellement la nouvelle carte
-                const newCard = document.querySelector(`.user-card[data-name="${state.activeUser}"]`);
-                if (newCard) newCard.classList.add('active');
-            }
-        }
-
+        // Afficher l'heure initiale
+        timerDisplay.textContent = formatTime(initialDuration);
     </script>
+
 </body>
 </html>
