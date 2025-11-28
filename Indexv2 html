@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface Cyberpunk - Mise à Jour</title>
+    <style>
+        /* --- CSS de Base pour le Look Cyberpunk & le Fond Violet --- */
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Consolas', monospace;
+            /* Nouveau fond : Dégradé radial violet depuis le centre */
+            background: radial-gradient(circle at center, #3a0050 0%, #150020 70%, #000000 100%);
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* --- Style de l'Overlay Principal --- */
+        #overlay {
+            position: relative; /* Conteneur centré */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #00ff99; /* Vert fluo */
+            text-shadow: 0 0 10px #00ff99, 0 0 20px #00ff99; /* Effet de lueur */
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        
+        /* --- Texte et Compteur --- */
+        #keyword {
+            font-size: 8vw;
+            font-weight: bold;
+            letter-spacing: 0.8vw;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        #timer {
+            font-size: 4vw;
+            margin-bottom: 40px;
+        }
+        
+        /* --- Bouton Start --- */
+        #startButton {
+            padding: 15px 30px;
+            font-size: 1.5vw;
+            font-weight: bold;
+            color: #ff00ff; /* Magenta fluo */
+            background: rgba(128, 0, 128, 0.2);
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 15px #ff00ff, 0 0 30px rgba(255, 0, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        #startButton:hover {
+            color: #0d0126;
+            background: #ff00ff;
+            box-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+        }
+        #startButton:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+            box-shadow: none;
+        }
+
+        /* --- Nouvel Élément pour l'Animation de Fin (Red Flash) --- */
+        #red-flash {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            /* Le point rouge initial (petite taille) */
+            width: 10px;
+            height: 10px;
+            border-radius: 50%; /* Pour former un cercle (dot) */
+            background-color: red;
+            opacity: 0;
+            
+            /* Centre le point sur lui-même */
+            transform: translate(-50%, -50%) scale(0.1); 
+            
+            /* Transition pour l'animation (durée et type) */
+            transition: transform 1.5s ease-out, opacity 1s ease-out; 
+            
+            /* Lueur initiale pour le point */
+            box-shadow: 0 0 50px red;
+            
+            /* Propriétés du message final */
+            display: none; /* Cache par défaut */
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-weight: bold;
+            z-index: 20;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <div id="keyword">MyEnterprise</div>
+        <div id="timer">15:00</div>
+        <button id="startButton">Démarrer l'Accès</button>
+    </div>
+
+    <div id="red-flash"></div>
+
+    <script>
+        // --- Code JavaScript pour le Compte à Rebours et l'Animation de Fin ---
+
+        const startButton = document.getElementById('startButton');
+        const timerDisplay = document.getElementById('timer');
+        const overlay = document.getElementById('overlay');
+        const redFlash = document.getElementById('red-flash');
+        
+        const initialDuration = 15 * 60; // 15 minutes en secondes
+        let countdownInterval = null;
+        let remainingTime = initialDuration;
+
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            // Assurer le format MM:SS
+            const formattedMinutes = String(minutes).padStart(2, '0');
+            const formattedSeconds = String(seconds).padStart(2, '0');
+            return `${formattedMinutes}:${formattedSeconds}`;
+        }
+
+        /**
+         * Déclenche l'animation de fin (point rouge qui grossit)
+         */
+        function endSequence() {
+            // 1. Masquer l'interface de compte à rebours
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.5s';
+            
+            // 2. Préparer et afficher le calque rouge
+            redFlash.style.display = 'flex';
+            
+            // 3. Utiliser requestAnimationFrame pour s'assurer que le navigateur
+            //    reconnaît la transition entre l'état initial et l'état final.
+            requestAnimationFrame(() => {
+                
+                // État final de l'animation: Agrandissement massif
+                // Un facteur de 200 assure que le dot de 10px couvre largement l'écran
+                redFlash.style.transform = 'translate(-50%, -50%) scale(200)';
+                redFlash.style.opacity = '1';
+            });
+            
+            // 4. Afficher le message après que l'expansion soit visible
+            setTimeout(() => {
+                redFlash.style.width = '100vw'; // Assurer qu'il couvre bien
+                redFlash.style.height = '100vh';
+                redFlash.style.borderRadius = '0'; // Ne plus être un cercle
+                redFlash.style.boxShadow = 'none'; // Retirer la lueur initiale
+                redFlash.innerHTML = '<div style="font-size: 3em; color: white;">TEMPS ÉCOULÉ</div>';
+            }, 1000); // 1000ms < 1500ms (durée de la transition)
+        }
+
+        function updateCountdown() {
+            if (remainingTime <= 0) {
+                clearInterval(countdownInterval);
+                timerDisplay.textContent = "00:00";
+                endSequence(); // Nouvelle séquence de fin
+                return;
+            }
+
+            remainingTime--;
+            timerDisplay.textContent = formatTime(remainingTime);
+        }
+
+        startButton.addEventListener('click', () => {
+            if (countdownInterval) return;
+
+            startButton.disabled = true;
+            startButton.textContent = "SEQUENCE EN COURS...";
+            remainingTime = initialDuration; 
+            timerDisplay.style.color = "#00ff99";
+            timerDisplay.style.textShadow = "0 0 10px #00ff99, 0 0 20px #00ff99";
+
+            // Démarrer le compte à rebours
+            countdownInterval = setInterval(updateCountdown, 1000);
+        });
+
+        // Afficher l'heure initiale
+        timerDisplay.textContent = formatTime(initialDuration);
+    </script>
+
+</body>
+</html>
